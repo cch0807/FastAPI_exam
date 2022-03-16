@@ -6,7 +6,7 @@ from app.handler.rest.v1._base import BaseDTO
 from app.common.enum.dataset import DatasetStatus
 
 class SegmentInputDTO(BaseDTO):
-  name: str
+  name: Optional[str]
   description: Optional[str]
   # api_idx: int
   # dataset_idx: int
@@ -15,14 +15,20 @@ class SegmentInputDTO(BaseDTO):
 class ParameterInputDTO(BaseDTO):
   name: str
   description: Optional[str]
-  
+  type: str
+  formula: dict
+
+class SegmentCreateDTO(BaseDTO):
+  name: str
+  description: Optional[str]
+  type: str
+  prameters: List[ParameterInputDTO]
 
 class ParameterResponseDTO(BaseDTO):
   idx: int
   name: str
   type: str
-  formula: json # json 형식 사용법 알아보기
-  
+  formula: dict
 
 class SegmentResponseDTO(BaseDTO):
   idx: int
@@ -33,9 +39,19 @@ class SegmentResponseDTO(BaseDTO):
   region_count: int
   # creater: str
   # checker: str
-  created_at: datetime
-  Modified_at: datetime
-  # Checked_at: datetime
+  created_date: datetime
+  modified_date: datetime
+  # Checked_date: datetime
   status: str
 
+class DatasetFieldsReponseDTO(BaseDTO):
+    idx: int
+    name: str
+    description: str
+
+class DatasetResponeDTO(BaseDTO):
+    idx: int
+    name: str
+    description: Optional[str]
+    fields: List[DatasetFieldsReponseDTO]
 
