@@ -4,7 +4,7 @@ from app.handler.rest.v1.segment.dtos import (
     SegmentInputDTO,
     SegmentResponseDTO,
     ParameterInputDTO,
-    DatasetResponeDTO,
+    DatasetResponseDTO,
 )
 from app.handler.rest.v1.segment.service import segmentService
 
@@ -21,13 +21,37 @@ async def get_segment_list(limit: int, offset: int = 0):
     return segment_list[offset:limit]
 
 
-@router.get("", reponse_model=DatasetResponeDTO, status_code=status.HTTP_200_OK)
+@router.get(
+    "/filter", response_model=SegmentResponseDTO, status_code=status.HTTP_200_OK
+)
+async def filter_segment(segment_object: SegmentInputDTO):
+    """
+    requested filter 된 segment 목록 조회
+    """
+    return await segmentService.filter(segment_object)
+
+
+@router.get(
+    "/dataset", response_model=DatasetResponseDTO, status_code=status.HTTP_200_OK
+)
 async def get_dataset_list(limit: int):
     """
-    dataset 목록 조회
+    dataset 목록을 조회
     """
-    dataset_list = await segmentService.dataset_read()
-    return dataset_list
+    dataset_list = await segmentService.read_dataset()
+    return dataset_list[:limit]
+
+
+@router.get(
+    "/dataset/{dataset_idx}",
+    response_model=DatasetResponseDTO,
+    status_code=status.HTTP_200_OK,
+)
+async def get_dataset(dataset_idx: int):
+    """
+    dataset 하나에 대한 상세 정보 조회
+    """
+    return await segmentService.get_dataset(dataset_idx)
 
 
 @router.post("", response_model=SegmentResponseDTO)
@@ -63,7 +87,7 @@ async def delete_segment(segment_idx: int, status_code=status.HTTP_200_OK):
     return await segmentService.delete(segment_idx)
 
 
-@router.patch("/{segment_idx}/", response_model=SegmentResponseDTO)
+@router.patch("/{segment_idx}", response_model=SegmentResponseDTO)
 async def update_segment_status(
     segment_idx: int, segment_object: SegmentInputDTO, status_code=status.HTTP_200_OK
 ):
