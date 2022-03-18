@@ -1,4 +1,6 @@
 from __future__ import annotations
+from email.policy import HTTP
+from http.client import HTTPException
 
 from typing import NoReturn, List
 
@@ -25,6 +27,14 @@ class SegmentService(BaseService):
         Segment 목록 조회
         """
         segments = self.seg_repo.retrieve(limit=limit)
+        return [SegmentResponseDTO.from_orm(segment) for segment in segments]
+
+    async def filter(self, segment_obj: SegmentInputDTO) -> List[SegmentResponseDTO]:
+        """
+        상태가 Requested 인 segment filter
+        """
+        segments = self.seg_repo.retrieve(status=segment_obj.status)
+
         return [SegmentResponseDTO.from_orm(segment) for segment in segments]
 
     async def create(
@@ -54,7 +64,7 @@ class SegmentService(BaseService):
                     fomula=parameter.formula,
                 )
             )
-        
+
         return SegmentResponseDTO.from_orm([segment, parameter])
 
     async def delete(self, idx: int) -> NoReturn:
@@ -77,18 +87,25 @@ class SegmentService(BaseService):
         """
 
         segment = await self.seg_repo.get(id=idx)
-        copy_segment = segment
-        copy_segment.name = "Copy_" + copy_segment.name
-        copy_segment = await self.seg_repo.save(copy_segment)
+        if segment:
+            copy_segment = segment
+            copy_segment.name = "Copy_" + copy_segment.name
+            copy_segment = await self.seg_repo.save(copy_segment)
+        else:
+            raise HTTPException(status_code=404, detail="Not found")
 
         return SegmentResponseDTO.from_orm(copy_segment)
 
     async def update_status(
         self, idx: int, segment_obj: SegmentInputDTO
     ) -> SegmentResponseDTO:
+
         segment = await self.seg_repo.get(id=idx)
-        segment.status = segment_obj.status
-        segment = await self.seg_repo.save(segment)
+        if segment:
+            segment.status = segment_obj.status
+            segment = await self.seg_repo.save(segment)
+        else:
+            raise HTTPException(status_code=404, detail="Not found")
 
         return SegmentResponseDTO.from_orm(segment)
 
@@ -100,10 +117,13 @@ class SegmentService(BaseService):
 
         dataset repo를 받아오는것 수정 필요
         """
-        obj = await self.api_repo.get(id=idx)
-        return DatasetDetailResponseDTO.from_orm(obj)
+        dataset = await self.api_repo.get(id=idx)
+        if dataset:
+            return DatasetDetailResponseDTO.from_orm(dataset)
+        else:
+            raise HTTPException(status_code=404, detail="Not found")
 
-    async def dataset_read(self, limit=None) -> List[DatasetResponseDTO]:
+    async def read_dataset(self, limit=None) -> List[DatasetResponseDTO]:
         """
         Dataset 목록 조회
         """
