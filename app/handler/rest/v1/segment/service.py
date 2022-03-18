@@ -8,6 +8,7 @@ from app.handler.rest.v1.segment import (
     SegmentResponseDTO,
     SegmentCreateDTO,
     SegmentInputDTO,
+    DatasetDetailResponseDTO,
     DatasetResponseDTO,
 )
 
@@ -53,13 +54,15 @@ class SegmentService(BaseService):
                     fomula=parameter.formula,
                 )
             )
+        
         return SegmentResponseDTO.from_orm([segment, parameter])
 
     async def delete(self, idx: int) -> NoReturn:
         """
         Segment Entity 하나를 삭제
 
-        Arguments: Segment Entity의 primary key 값
+        Arguments:
+            idx: Segment Entity의 primary key 값
 
         체크박스에 체크된 것들이 삭제되는거니까 여러개가 한번에 삭제되야 하나?
         """
@@ -89,16 +92,16 @@ class SegmentService(BaseService):
 
         return SegmentResponseDTO.from_orm(segment)
 
-    async def dataset_get_by_name(self, name: str) -> DatasetResponseDTO:
+    async def get_dataset(self, idx: int) -> DatasetDetailResponseDTO:
         """
-        DATASET 변수 조회
+        DATASET 1개 조회
 
         Arguments: Dataset Entity 의 name 값
 
         dataset repo를 받아오는것 수정 필요
         """
-        dataset = self.seg_repo.get_by_name(name=name)
-        return DatasetResponseDTO.from_orm(dataset)
+        obj = await self.api_repo.get(id=idx)
+        return DatasetDetailResponseDTO.from_orm(obj)
 
     async def dataset_read(self, limit=None) -> List[DatasetResponseDTO]:
         """
@@ -109,3 +112,8 @@ class SegmentService(BaseService):
         return [DatasetResponseDTO.from_orm(dataset) for dataset in datasets]
 
     # async def dataset_condition_read(self, )
+
+
+segmentService = SegmentService(
+    seg_repo=SegmentRepo(), param_repo=ParameterRepo(), sub_seg_repo=SubSegmentRepo()
+)
