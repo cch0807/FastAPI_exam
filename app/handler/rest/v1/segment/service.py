@@ -1,5 +1,4 @@
 from __future__ import annotations
-from email.policy import HTTP
 from http.client import HTTPException
 
 from typing import NoReturn, List
@@ -13,7 +12,7 @@ from app.handler.rest.v1.segment import (
     DatasetDetailResponseDTO,
     DatasetResponseDTO,
 )
-
+from app.common.enum.segment import SegmentStatus
 from app.domain.segment.entity import Segment, Parameter
 
 
@@ -29,17 +28,15 @@ class SegmentService(BaseService):
         segments = self.seg_repo.retrieve(limit=limit)
         return [SegmentResponseDTO.from_orm(segment) for segment in segments]
 
-    async def filter(self, segment_obj: SegmentInputDTO) -> List[SegmentResponseDTO]:
+    async def filter(self) -> List[SegmentResponseDTO]:
         """
         상태가 Requested 인 segment filter
         """
-        segments = self.seg_repo.retrieve(status=segment_obj.status)
+        segments = self.seg_repo.retrieve(status="Requested")
 
         return [SegmentResponseDTO.from_orm(segment) for segment in segments]
 
-    async def create(
-        self, segment_create_object: SegmentCreateDTO
-    ) -> SegmentResponseDTO:
+    async def create(self, segment_object: SegmentCreateDTO) -> SegmentResponseDTO:
         """
         Segment Entity 하나를 추가
 
@@ -48,57 +45,87 @@ class SegmentService(BaseService):
         Tips: Segment와 Parameter 값을 인자로 받아 한꺼번에 생성처리
         SubSegment도 함께 만들어야 하는지?
         """
-        segment = Segment()
-        segment.name = SegmentCreateDTO.name
-        segment.description = SegmentCreateDTO.description
-        segment = await self.seg_repo.save()
+        segment = Segment(**segment_object.dict(exclude="parameters"))
+        for parameter in [
+            Parameter(**mapping)
+            for mapping in segment_object.dict(include="parameters")["parameters"]
+        ]:
+            segment.parameter.append(parameter)
 
-        parameter = Parameter()
-        for parameter in segment_create_object.parameters:
-            await self.param_repo.save(
-                Parameter(
-                    segment_idx=segment.id,
-                    name=parameter.name,
-                    description=parameter.description,
-                    type=parameter.type,
-                    fomula=parameter.formula,
-                )
-            )
+        segment = await self.seg_repo.save(segment)
+        return SegmentResponseDTO.from_orm(segment)
 
-        return SegmentResponseDTO.from_orm([segment, parameter])
+        # segment = Segment()
+        # segment.name = SegmentCreateDTO.name
+        # segment.description = SegmentCreateDTO.description
+        # segment = await self.seg_repo.save()
 
-    async def delete(self, idx: int) -> NoReturn:
+        # parameter = Parameter()
+        # for parameter in segment_object.parameters:
+        #     await self.param_repo.save(
+        #         Parameter(
+        #             segment_idx=segment.id,
+        #             name=parameter.name,
+        #             description=parameter.description,
+        #             type=parameter.type,
+        #             fomula=parameter.formula,
+        #         )
+        #     )
+
+        # return SegmentResponseDTO.from_orm([segment, parameter])
+
+    async def delete(self, idx_list: List[int]) -> NoReturn:
         """
         Segment Entity 하나를 삭제
 
         Arguments:
-            idx: Segment Entity의 primary key 값
-
-        체크박스에 체크된 것들이 삭제되는거니까 여러개가 한번에 삭제되야 하나?
+            idx_list: Segment Entity의 id값들
         """
 
-        await self.seg_repo.remove(idx)
+        segment_list = [await self.seg_repo.get(id=idx) for idx in idx_list]
+        for segment in segment_list:
+            if segment.status == SegmentStatus.ACTIVE:
+                raise HTTPException(status_code=400, detail="Not deleted")
+            else:
+                await self.seg_repo.remove(segment.id)
 
-    async def copy(self, idx: int) -> SegmentResponseDTO:
+    async def copy(self, idx_list: List[int]) -> List[SegmentResponseDTO]:
         """
-        Segment Entity 하나를 복제
+        사용자가 원하는 Segment Entity 복사
 
-        Arguments: Segment Entity의 primary key 값
+        Arguments:
+            idx:Segment Entity의 id값들
+
+        Tips:
+            여러개의 Entity가 복사될 수 있다.
+            id가 존재하지 않을 시 에러처리
         """
 
-        segment = await self.seg_repo.get(id=idx)
-        if segment:
-            copy_segment = segment
-            copy_segment.name = "Copy_" + copy_segment.name
-            copy_segment = await self.seg_repo.save(copy_segment)
+        segment_list = [await self.seg_repo.get(id=idx) for idx in idx_list]
+        if segment_list:
+            for segment in segment_list:
+                segment.name = "Copy_" + segment.name
+
+            copied_segment = await self.seg_repo.save_all(**segment_list)
+            return SegmentResponseDTO.from_orm(copied_segment)
+
         else:
             raise HTTPException(status_code=404, detail="Not found")
-
-        return SegmentResponseDTO.from_orm(copy_segment)
 
     async def update_status(
         self, idx: int, segment_obj: SegmentInputDTO
     ) -> SegmentResponseDTO:
+
+        """
+        사용자가 원하는 Segment Entity status update
+
+        Arguments:
+            idx:Segment Entity의 id
+            segment_obj: 변경될 status값
+
+        Tips:
+
+        """
 
         segment = await self.seg_repo.get(id=idx)
         if segment:
@@ -113,7 +140,10 @@ class SegmentService(BaseService):
         """
         DATASET 1개 조회
 
-        Arguments: Dataset Entity 의 name 값
+        Arguments:
+
+            name: Dataset Entity 의 name
+            idx : Dataset Entity 의 id
 
         dataset repo를 받아오는것 수정 필요
         """
@@ -123,12 +153,12 @@ class SegmentService(BaseService):
         else:
             raise HTTPException(status_code=404, detail="Not found")
 
-    async def read_dataset(self, limit=None) -> List[DatasetResponseDTO]:
+    async def read_dataset(self) -> List[DatasetResponseDTO]:
         """
         Dataset 목록 조회
         """
 
-        datasets = self.seg_repo.retrieve(limit=limit)
+        datasets = self.seg_repo.retrieve_dataset()
         return [DatasetResponseDTO.from_orm(dataset) for dataset in datasets]
 
     # async def dataset_condition_read(self, )
