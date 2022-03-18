@@ -1,3 +1,4 @@
+from typing import List
 from fastapi import APIRouter, status
 
 from app.handler.rest.v1.segment.dtos import (
@@ -24,11 +25,11 @@ async def get_segment_list(limit: int, offset: int = 0):
 @router.get(
     "/filter", response_model=SegmentResponseDTO, status_code=status.HTTP_200_OK
 )
-async def filter_segment(segment_object: SegmentInputDTO):
+async def filter_segment():
     """
     requested filter 된 segment 목록 조회
     """
-    return await segmentService.filter(segment_object)
+    return await segmentService.filter()
 
 
 @router.get(
@@ -69,7 +70,7 @@ async def create_segment(
 
 
 @router.get("/{segment_idx}", response_model=SegmentResponseDTO)
-async def copy_segment(segment_idx: int, status_code=status.HTTP_201_CREATED):
+async def copy_segment(segment_idx: List[int], status_code=status.HTTP_201_CREATED):
     """
     id를 통한 segment entity 하나를 복사
     복사된 entity는 이름이 copy+ segment이름 같은 방식으로 새로운 이름 부여
@@ -79,7 +80,7 @@ async def copy_segment(segment_idx: int, status_code=status.HTTP_201_CREATED):
 
 
 @router.delete("/{segment_idx}")
-async def delete_segment(segment_idx: int, status_code=status.HTTP_200_OK):
+async def delete_segment(segment_idx: List[int], status_code=status.HTTP_200_OK):
     """
     id를 통한 segment 삭제
     """
@@ -92,6 +93,6 @@ async def update_segment_status(
     segment_idx: int, segment_object: SegmentInputDTO, status_code=status.HTTP_200_OK
 ):
     """
-    id를 통한 segment 객체하나를 받아서 status값을 update
+    id를 통한 segment 객체하나를 받아서 status값  을 update
     """
     return await segmentService.update_status(segment_idx, segment_object)

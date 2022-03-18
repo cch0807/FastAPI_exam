@@ -32,7 +32,7 @@ class SegmentService(BaseService):
         """
         상태가 Requested 인 segment filter
         """
-        segments = self.seg_repo.retrieve(status="Requested")
+        segments = self.seg_repo.retreive_filter_requestsed()
 
         return [SegmentResponseDTO.from_orm(segment) for segment in segments]
 
