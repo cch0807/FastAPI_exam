@@ -1,34 +1,74 @@
+from datetime import datetime
+from pydantic import Field
 from typing import Optional, List
 
 from app.handler.rest.v1._base import BaseDTO
 
 
-class APIInputDTO(BaseDTO):
-    name: str
+class SegmentInputDTO(BaseDTO):
+    name: Optional[str]
     description: Optional[str]
+    # api_idx: int
+    # dataset_idx: int
+    status: str
 
 
-class APIFieldInputDTO(BaseDTO):
+class SubSegment(BaseDTO):
+    name: str
+    description: str
+    param1: int
+    param2: int
+
+
+class ParameterInputDTO(BaseDTO):
     name: str
     description: Optional[str]
     type: str
+    formula: dict
 
 
-class APICreateDTO(BaseDTO):
+class SegmentCreateDTO(BaseDTO):
     name: str
     description: Optional[str]
+    status: str
+    parameters: List[ParameterInputDTO]
+    subsegment: SubSegment
+
+
+class ParameterResponseDTO(BaseDTO):
+    id: int = Field(alias="idx")
+    name: str
     type: str
-    fields: List[APIFieldInputDTO]
+    formula: dict
 
 
-class APIFieldsReponseDTO(BaseDTO):
-    idx: int
+class SegmentResponseDTO(BaseDTO):
+    id: int = Field(alias="idx")
+    name: str
+    # api_name: str
+    # dataset_name: str
+    parameter: List[ParameterResponseDTO]
+    region_count: int
+    # creater: str
+    # checker: str
+    created_date: datetime
+    modified_date: datetime
+    # Checked_date: datetime
+    status: str
+
+
+class DatasetFieldsResponseDTO(BaseDTO):
+    id: int = Field(alias="idx")
     name: str
     description: str
 
 
-class APIResponeDTO(BaseDTO):
-    idx: int
+class DatasetResponseDTO(BaseDTO):
+    id: int = Field(alias="idx")
     name: str
     description: Optional[str]
-    fields: List[APIFieldsReponseDTO]
+    fields: List[DatasetFieldsResponseDTO]
+
+
+class DatasetDetailResponseDTO(DatasetResponseDTO):
+    fields: List[DatasetFieldsResponseDTO]

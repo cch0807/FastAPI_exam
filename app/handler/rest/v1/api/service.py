@@ -134,12 +134,20 @@ class SegmentService(BaseService):
                     if segment.status == SegmentStatus.ACTIVE:
                         raise HTTPException(status_code=400, detail="Not Accepted")
                     else:
-                        segment.status = "Requested"
+                        segment.status = segment_obj.status
 
                 elif segment_obj.status == "Active":
-                    segment.status = "Active"
+                    if segment.status != SegmentStatus.REQUESTED:
+                        raise HTTPException(status_code=400, detail="Not Accepted")
+                    else:
+                        segment.status = segment_obj.status
 
-                # elif segment_obj.status == ""
+                elif segment_obj.status == "Inactive":
+                    if segment.status != SegmentStatus.REQUESTED:
+                        raise HTTPException(status_code=400, detail="Not Accepted")
+                    else:
+                        segment.status = segment_obj.status
+
         else:
             raise HTTPException(status_code=404, detail="Not found")
 
