@@ -1,87 +1,178 @@
 from __future__ import annotations
+from http.client import HTTPException
 
 from typing import NoReturn, List
 
-from app.domain.api.repository import APIRepository, APIFieldRepository
+from app.domain.segment import SegmentRepo, ParameterRepo, SubSegmentRepo
 from app.handler.rest.v1._base import BaseService
-from app.handler.rest.v1.api import APIResponeDTO, APIInputDTO, APICreateDTO
-from app.domain.api.entity import API, APIField
+from app.handler.rest.v1.segment import (
+    SegmentResponseDTO,
+    SegmentCreateDTO,
+    SegmentInputDTO,
+    DatasetDetailResponseDTO,
+    DatasetResponseDTO,
+)
+from app.common.enum.segment import SegmentStatus
+from app.domain.segment.entity import Segment, Parameter
 
 
-class APIService(BaseService):
-    api_repo: APIRepository
-    api_field_repo: APIFieldRepository
+class SegmentService(BaseService):
+    seg_repo: SegmentRepo
+    param_repo: ParameterRepo
+    sub_seg_repo: SubSegmentRepo
 
-    async def read(self, limit=None) -> List[APIResponeDTO]:
+    async def read(self, limit=None) -> List[SegmentResponseDTO]:
         """
-        API 전체 리스트 조회
+        Segment 목록 조회
         """
-        apis = self.api_repo.retrieve(limit=limit)
-        return [APIResponeDTO.from_orm(api) for api in apis]
+        segments = self.seg_repo.retrieve(limit=limit)
+        return [SegmentResponseDTO.from_orm(segment) for segment in segments]
 
-    async def create(self, api_create_object: APICreateDTO) -> APIResponeDTO:
+    async def filter(self) -> List[SegmentResponseDTO]:
         """
-        API Entity 하나를 추가
+        상태가 Requested 인 segment filter
+        """
+        segments = self.seg_repo.retreive_filter_requestsed()
+
+        return [SegmentResponseDTO.from_orm(segment) for segment in segments]
+
+    async def create(self, segment_object: SegmentCreateDTO) -> SegmentResponseDTO:
+        """
+        Segment Entity 하나를 추가
+
+        Arguments: Segment_create_object: 생성할 segment 정보 값.
+
+        Tips: Segment와 Parameter 값을 인자로 받아 한꺼번에 생성처리
+        SubSegment도 함께 만들어야 하는지?
+        """
+        segment = Segment(**segment_object.dict(exclude="parameters, subsegemnt"))
+        for parameter in [
+            Parameter(**mapping)
+            for mapping in segment_object.dict(include="parameters")["parameters"]
+        ]:
+            segment.parameter.append(parameter)
+
+        segment = await self.seg_repo.save(segment)
+        return SegmentResponseDTO.from_orm(segment)
+
+        # segment = Segment()
+        # segment.name = SegmentCreateDTO.name
+        # segment.description = SegmentCreateDTO.description
+        # segment = await self.seg_repo.save()
+
+        # parameter = Parameter()
+        # for parameter in segment_object.parameters:
+        #     await self.param_repo.save(
+        #         Parameter(
+        #             segment_idx=segment.id,
+        #             name=parameter.name,
+        #             description=parameter.description,
+        #             type=parameter.type,
+        #             fomula=parameter.formula,
+        #         )
+        #     )
+
+        # return SegmentResponseDTO.from_orm([segment, parameter])
+
+    async def delete(self, idx_list: List[int]) -> NoReturn:
+        """
+        Segment Entity 하나를 삭제
 
         Arguments:
-            api_field_object: 생성할 api 정보 값.
+            idx_list: Segment Entity의 id값들
+        """
+
+        segment_list = [await self.seg_repo.get(id=idx) for idx in idx_list]
+        for segment in segment_list:
+            if segment.status == SegmentStatus.ACTIVE:
+                raise HTTPException(status_code=400, detail="Not deleted")
+            else:
+                await self.seg_repo.remove(segment.id)
+
+    async def copy(self, idx_list: List[int]) -> List[SegmentResponseDTO]:
+        """
+        사용자가 원하는 Segment Entity 복사
+
+        Arguments:
+            idx:Segment Entity의 id값들
 
         Tips:
-            API와 APIField 값을 인자로 받아 한꺼번에 생성처리.
+            여러개의 Entity가 복사될 수 있다.
+            id가 존재하지 않을 시 에러처리
         """
-        api = API()
-        api.name = api_create_object.name
-        api.description = api_create_object.description
-        api = await self.api_repo.save(api)
 
-        api_field = APIField()
-        for api_field in api_create_object.field:
-            await self.api_field_repo.save(
-                APIField(
-                    api_idx=api.id,
-                    name=api_field.name,
-                    description=api_field.description,
-                    type=api_field.type,
-                )
-            )
+        segment_list = [await self.seg_repo.get(id=idx) for idx in idx_list]
+        if segment_list:
+            for segment in segment_list:
+                segment.name = "Copy_" + segment.name
 
-        return APIResponeDTO.from_orm([api, api_field])
+            copied_segment = await self.seg_repo.save_all(**segment_list)
+            return SegmentResponseDTO.from_orm(copied_segment)
 
-    async def update_meta_data(
-        self, idx: int, api_object: APIInputDTO
-    ) -> APIResponeDTO:
+        else:
+            raise HTTPException(status_code=404, detail="Not found")
+
+    async def update_status(
+        self, idx_list: List[int], segment_obj: SegmentInputDTO
+    ) -> List[SegmentResponseDTO]:
+
         """
-        API Entity 하나를 수정
+        사용자가 원하는 Segment Entity status update
 
         Arguments:
-            idx: API Entity의 primary_key 값.
-            api_object: 수정할 내용 값.
-        """
-        api = await self.api_repo.get(id=idx, for_update=True)
-        api.name = api_object.name
-        api.description = api_object.description
-        api = await self.api_repo.save(api)
+            idx:Segment Entity의 id
+            segment_obj: 변경될 status값
 
-        return APIResponeDTO.from_orm(api)
+        Tips:
 
-    async def delete(self, idx: int) -> NoReturn:
         """
-        API Entity 하나를 삭제
+
+        segment_list = [await self.seg_repo.get(id=idx) for idx in idx_list]
+        if segment_list:
+            for segment in segment_list:
+                if segment_obj.status == "Requested":
+                    if segment.status == SegmentStatus.ACTIVE:
+                        raise HTTPException(status_code=400, detail="Not Accepted")
+                    else:
+                        segment.status = "Requested"
+
+                elif segment_obj.status == "Active":
+                    segment.status = "Active"
+
+                # elif segment_obj.status == ""
+        else:
+            raise HTTPException(status_code=404, detail="Not found")
+
+        return SegmentResponseDTO.from_orm(segment)
+
+    async def get_dataset(self, idx: int) -> DatasetDetailResponseDTO:
+        """
+        DATASET 1개 조회
 
         Arguments:
-            idx: API Entity의 primary_key 값.
+
+            name: Dataset Entity 의 name
+            idx : Dataset Entity 의 id
+
+        dataset repo를 받아오는것 수정 필요
         """
-        await self.api_repo.remove(idx)
+        dataset = await self.api_repo.get(id=idx)
+        if dataset:
+            return DatasetDetailResponseDTO.from_orm(dataset)
+        else:
+            raise HTTPException(status_code=404, detail="Not found")
 
-    async def retrieve_with_name(self, name: str):
+    async def read_dataset(self) -> List[DatasetResponseDTO]:
         """
-        이름으로 API 조회
-
-        Arguments:
-            name: 조회할 API Entity의 이름.
+        Dataset 목록 조회
         """
-        api = await self.api_repo.retrieve_with_name(name)
-        return APIResponeDTO.from_orm(api)
+
+        datasets = self.seg_repo.retrieve_dataset()
+        return [DatasetResponseDTO.from_orm(dataset) for dataset in datasets]
+
+    # async def dataset_condition_read(self, )
 
 
-apiService = APIService(api_repo=APIRepository(), api_field_repo=APIFieldRepository())
+segmentService = SegmentService(
+    seg_repo=SegmentRepo(), param_repo=ParameterRepo(), sub_seg_repo=SubSegmentRepo()
+)
