@@ -26,3 +26,20 @@ class SegmentRepo(RepresentableEntityRepoMixin[Segment], BaseEntityRepo[Segment]
         Activated 된 dataset 조회
         """
         return await session.scalars(select(Segment).filter_by(status="Active"))
+
+    async def retrieve_for_pagenation(
+        self, size: int, cursor: int
+    ) -> tuple[list[Segment], int | None]:
+        """Segment 조회 쿼리"""
+        stmt = select(Segment).limit(size).where(Segment.idx > cursor)
+        results = list(await session.scalars(stmt))
+        cursor = None
+        if results:
+            cursor = results[-1].idx
+        else:
+            cursor = 0
+
+        return results, cursor
+
+
+segmentRepo = SegmentRepo()
