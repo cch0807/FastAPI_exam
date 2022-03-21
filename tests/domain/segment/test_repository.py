@@ -1,5 +1,6 @@
 import pytest
 
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.segment import Segment, SegmentRepo
