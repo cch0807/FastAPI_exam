@@ -52,6 +52,7 @@ class SegmentService(BaseService):
         Arguments: Segment_create_object: 생성할 segment 정보 값.
 
         Tips: Segment와 Parameter 값을 인자로 받아 한꺼번에 생성처리
+
         SubSegment도 함께 만들어야 하는지?
         """
         segment = Segment(**segment_object.dict(exclude="parameters, subsegment"))
@@ -62,34 +63,16 @@ class SegmentService(BaseService):
             )
         ]:
             segment.parameter.append(parameter)
-        subsegment = SubSegment()
-        subsegment.name = segment.name
-        subsegment.description = segment.description
-        subsegment.param1 = segment.parameter[0].idx
-        subsegment.param2 = segment.parameter[1].idx
+        
+        # subsegment = SubSegment()
+        # subsegment.name = segment.name
+        # subsegment.description = segment.description
+        # subsegment.param1 = segment.parameter[0].idx
+        # subsegment.param2 = segment.parameter[1].idx
 
-        segment.parameter.subsegment.append(subsegment)
+        # segment.parameter.subsegment.append(subsegment)
         segment = await self.seg_repo.save(segment)
         return SegmentResponseDTO.from_orm(segment)
-
-        # segment = Segment()
-        # segment.name = SegmentCreateDTO.name
-        # segment.description = SegmentCreateDTO.description
-        # segment = await self.seg_repo.save()
-
-        # parameter = Parameter()
-        # for parameter in segment_object.parameters:
-        #     await self.param_repo.save(
-        #         Parameter(
-        #             segment_idx=segment.id,
-        #             name=parameter.name,
-        #             description=parameter.description,
-        #             type=parameter.type,
-        #             fomula=parameter.formula,
-        #         )
-        #     )
-
-        # return SegmentResponseDTO.from_orm([segment, parameter])
 
     async def delete(self, idx_list: List[int]) -> NoReturn:
         """
@@ -164,6 +147,7 @@ class SegmentService(BaseService):
                         raise HTTPException(status_code=400, detail="Not Accepted")
                     else:
                         segment.status = segment_obj.status
+                segment = await self.seg_repo.save(segment)
 
         else:
             raise HTTPException(status_code=404, detail="Not found")
@@ -194,8 +178,6 @@ class SegmentService(BaseService):
 
         datasets = self.seg_repo.retrieve_dataset()
         return [DatasetResponseDTO.from_orm(dataset) for dataset in datasets]
-
-    # async def dataset_condition_read(self, )
 
 
 segmentService = SegmentService(
