@@ -14,7 +14,7 @@ from app.handler.rest.v1.segment import (
     DatasetResponseDTO,
 )
 from app.common.enum.segment import SegmentStatus
-from app.domain.segment.entity import Segment, Parameter, SubSegment
+from app.domain.segment.entity import Segment, Parameter
 
 
 class SegmentService(BaseService):
@@ -55,6 +55,7 @@ class SegmentService(BaseService):
 
         SubSegment도 함께 만들어야 하는지?
         """
+
         segment = Segment(**segment_object.dict(exclude="parameters, subsegment"))
         for parameter in [
             Parameter(**mapping)
@@ -63,7 +64,17 @@ class SegmentService(BaseService):
             )
         ]:
             segment.parameter.append(parameter)
-        
+
+        subsegments = [
+            {
+                "name": "subsegname1",
+                "description": "DESC",
+                "param1": 1,
+                "param2": 2,
+                # "value_list1": [{"condition":"Less than","value1":25, "value2": None}, {"condition":"Contain", "value":"BC"}]
+                "value_list2": [{"Less than": [25, None]}, {"Contain": "BC"}],
+            }
+        ]
         # subsegment = SubSegment()
         # subsegment.name = segment.name
         # subsegment.description = segment.description
