@@ -14,7 +14,7 @@ from app.handler.rest.v1.segment import (
     DatasetResponseDTO,
 )
 from app.common.enum.segment import SegmentStatus
-from app.domain.segment.entity import Segment, Parameter
+from app.domain.segment.entity import Segment, Parameter, SubSegment
 
 
 class SegmentService(BaseService):
@@ -56,25 +56,31 @@ class SegmentService(BaseService):
         SubSegment도 함께 만들어야 하는지?
         """
 
-        segment = Segment(**segment_object.dict(exclude="parameters, subsegment"))
+        segment = Segment(**segment_object.dict(exclude="parameters"))
         for parameter in [
             Parameter(**mapping)
-            for mapping in segment_object.dict(include="parameters")["parameters"](
-                exclude="subsegment"
-            )
+            for mapping in segment_object.dict(include="parameters")["parameters"]
         ]:
             segment.parameter.append(parameter)
+            for fomula in parameter.formula:
+                subsegment = SubSegment()
+                subsegment.name = "subsegment"
+                subsegment.description = "desc"
+                subsegment.param1 = 1
+                subsegment.param2 = 2
+                subsegment.fomula = [{"Less than": [25, None]}, {"Contain": "BC"}]
 
-        subsegments = [
-            {
-                "name": "subsegname1",
-                "description": "DESC",
-                "param1": 1,
-                "param2": 2,
-                # "value_list1": [{"condition":"Less than","value1":25, "value2": None}, {"condition":"Contain", "value":"BC"}]
-                "value_list2": [{"Less than": [25, None]}, {"Contain": "BC"}],
-            }
-        ]
+        # subsegments = [
+        #     {
+        #         "name": "subsegname1",
+        #         "description": "DESC",
+        #         "param1": 1,
+        #         "param2": 2,
+        #         # "value_list1": [{"condition":"Less than","value1":25, "value2": None}, {"condition":"Contain", "value":"BC"}]
+        #         "value_list2": [{"Less than": [25, None]}, {"Contain": "BC"}],
+        #     }
+        # ]
+
         # subsegment = SubSegment()
         # subsegment.name = segment.name
         # subsegment.description = segment.description
