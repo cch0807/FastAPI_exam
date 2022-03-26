@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Sequence, TYPE_CHECKING
 
 from sqlalchemy import Column, Enum, Integer
@@ -13,6 +15,7 @@ if TYPE_CHECKING:
 class Dataset(BaseEntity, RepresentableEntityMixin):
     __tablename__ = "dataset"
     idx = Column(Integer, primary_key=True)
+    api_idx = Column(Integer)
     status = Column(Enum(DatasetStatus))
     fields: Sequence[DatasetField]
     name: str
