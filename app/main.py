@@ -11,7 +11,7 @@ app.add_middleware(
     allow_origins=[
         "https://localhost:3000",
         "http://localhost:3000",
-        "https://stg-banko-www.aizendev.com",
+        "https://secret.com",
     ],
     allow_credentials=True,
     allow_methods=["*"],
